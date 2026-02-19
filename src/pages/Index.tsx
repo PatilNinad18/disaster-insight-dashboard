@@ -1,5 +1,5 @@
-import Dashboard from "./Dashboard";
+import Layout from "@/components/Layout";
 
-const Index = () => <Dashboard />;
+const Index = () => <Layout />;
 
 export default Index;

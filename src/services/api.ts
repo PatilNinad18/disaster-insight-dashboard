@@ -1,5 +1,5 @@
-// Mock API service — mirrors Express backend spec
-// Swap these with real fetch() calls when connecting to Express/Python backend
+// Mock API service — mirrors FastAPI backend spec
+// Swap these with real fetch() calls when connecting to Python backend
 
 export interface DistrictData {
   name: string;
@@ -30,6 +30,49 @@ export interface SimulationResult {
   fatalities: number;
   economic_loss: number;
   time_series: TimeSeriesPoint[];
+}
+
+export interface RedTeamRequest {
+  district: string;
+  disasterType: "flood" | "earthquake";
+  userDecision: "Evacuate" | "Monitor" | "Ignore";
+  riskScore: number;
+}
+
+export interface RedTeamResponse {
+  district: string;
+  disasterType: string;
+  userDecision: "Evacuate" | "Monitor" | "Ignore";
+  aiRecommendation: "Evacuate" | "Monitor" | "Ignore";
+  conflictPercentage: number;
+  conflictLevel: "Low" | "Medium" | "High";
+  impactMessage: string;
+}
+
+export interface ZoneData {
+  id: string;
+  name: string;
+  riskScore: number;
+  population: number;
+  priority: number;
+  recommendedRescueTeams: number;
+  coordinates: [number, number][];
+}
+
+export interface DecisionLog {
+  id: string;
+  timestamp: string;
+  district: string;
+  disasterType: string;
+  userDecision: "Evacuate" | "Monitor" | "Ignore";
+  aiWarning: string;
+  overrideReason?: string;
+  predictedImpact: string;
+}
+
+export interface ZoneAnalysisRequest {
+  district: string;
+  disasterType: "flood" | "earthquake";
 }
 
 const DISTRICTS: Record<string, DistrictData> = {
@@ -85,6 +128,135 @@ export async function simulate(req: SimulationRequest): Promise<SimulationResult
   });
 
   return { affected_population: affected, fatalities, economic_loss, time_series };
+}
+
+// POST /api/red-team/evaluate
+export async function evaluateRedTeam(req: RedTeamRequest): Promise<RedTeamResponse> {
+  await delay(500);
+  
+  // Mock AI recommendation logic
+  const aiRecommendations = {
+    high: "Evacuate",
+    medium: "Monitor", 
+    low: "Ignore"
+  };
+  
+  const aiRec = req.riskScore > 70 ? "Evacuate" : req.riskScore > 40 ? "Monitor" : "Ignore";
+  const conflictPercentage = Math.abs(Math.random() * 100);
+  
+  let conflictLevel: "Low" | "Medium" | "High" = "Low";
+  if (conflictPercentage > 70) conflictLevel = "High";
+  else if (conflictPercentage > 40) conflictLevel = "Medium";
+  
+  return {
+    district: req.district,
+    disasterType: req.disasterType,
+    userDecision: req.userDecision,
+    aiRecommendation: aiRec as "Evacuate" | "Monitor" | "Ignore",
+    conflictPercentage: Math.round(conflictPercentage),
+    conflictLevel,
+    impactMessage: `Delaying evacuation increases projected fatalities by ${Math.round(conflictPercentage)}%`
+  };
+}
+
+// GET /api/audit-logs
+export async function getAuditLogs(filters?: {
+  district?: string;
+  disasterType?: string;
+}): Promise<DecisionLog[]> {
+  await delay(300);
+  
+  // Mock audit logs
+  const mockLogs: DecisionLog[] = [
+    {
+      id: "1",
+      timestamp: "2024-01-15T10:30:00Z",
+      district: "Pune",
+      disasterType: "flood",
+      userDecision: "Evacuate",
+      aiWarning: "High risk detected",
+      overrideReason: "Manual override due to updated weather data",
+      predictedImpact: "5000 lives saved"
+    },
+    {
+      id: "2", 
+      timestamp: "2024-01-14T15:45:00Z",
+      district: "Mumbai",
+      disasterType: "earthquake",
+      userDecision: "Monitor",
+      aiWarning: "Moderate seismic activity",
+      predictedImpact: "No immediate action required"
+    }
+  ];
+  
+  if (filters?.district) {
+    return mockLogs.filter(log => log.district === filters.district);
+  }
+  if (filters?.disasterType) {
+    return mockLogs.filter(log => log.disasterType === filters.disasterType);
+  }
+  
+  return mockLogs;
+}
+
+// POST /api/zone-analysis
+export async function analyzeZones(req: ZoneAnalysisRequest): Promise<ZoneData[]> {
+  await delay(400);
+  
+  // Mock zone data for Pune
+  if (req.district.toLowerCase() === "pune") {
+    return [
+      {
+        id: "zone1",
+        name: "Central Pune",
+        riskScore: 85,
+        population: 2500000,
+        priority: 1,
+        recommendedRescueTeams: 15,
+        coordinates: [[18.5204, 73.8567], [18.5304, 73.8667], [18.5104, 73.8467]]
+      },
+      {
+        id: "zone2", 
+        name: "Kothrud",
+        riskScore: 72,
+        population: 1800000,
+        priority: 2,
+        recommendedRescueTeams: 12,
+        coordinates: [[18.5066, 73.8057], [18.5166, 73.8157], [18.4966, 73.7957]]
+      },
+      {
+        id: "zone3",
+        name: "Hinjewadi",
+        riskScore: 68,
+        population: 1200000,
+        priority: 3,
+        recommendedRescueTeams: 8,
+        coordinates: [[18.5982, 73.7362], [18.6082, 73.7462], [18.5882, 73.7262]]
+      },
+      {
+        id: "zone4",
+        name: "Baner",
+        riskScore: 45,
+        population: 900000,
+        priority: 4,
+        recommendedRescueTeams: 6,
+        coordinates: [[18.5635, 73.7773], [18.5735, 73.7873], [18.5535, 73.7673]]
+      }
+    ];
+  }
+  
+  // Default zones for other districts
+  return [
+    {
+      id: "zone1",
+      name: "Urban Center",
+      riskScore: 75,
+      population: 2000000,
+      priority: 1,
+      recommendedRescueTeams: 10,
+      coordinates: [[0, 0], [1, 0], [1, 1], [0, 1]]
+    }
+  ];
 }
 
 function delay(ms: number) {
