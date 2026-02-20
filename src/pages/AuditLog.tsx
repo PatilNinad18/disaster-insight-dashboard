@@ -16,8 +16,8 @@ const AuditLog = () => {
   const { decisionLogs, setDecisionLogs, isLoading, setIsLoading } = useAppStore();
   const [filteredLogs, setFilteredLogs] = useState<DecisionLog[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [districtFilter, setDistrictFilter] = useState<string>("");
-  const [disasterTypeFilter, setDisasterTypeFilter] = useState<string>("");
+  const [districtFilter, setDistrictFilter] = useState<string>("all");
+  const [disasterTypeFilter, setDisasterTypeFilter] = useState<string>("all");
 
   useEffect(() => {
     loadAuditLogs();
@@ -34,11 +34,11 @@ const AuditLog = () => {
       );
     }
 
-    if (districtFilter) {
+    if (districtFilter !== "all") {
       filtered = filtered.filter(log => log.district === districtFilter);
     }
 
-    if (disasterTypeFilter) {
+    if (disasterTypeFilter !== "all") {
       filtered = filtered.filter(log => log.disasterType === disasterTypeFilter);
     }
 
@@ -122,7 +122,7 @@ const AuditLog = () => {
                   <SelectValue placeholder="All districts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All districts</SelectItem>
+                  <SelectItem value="all">All districts</SelectItem>
                   {uniqueDistricts.map(district => (
                     <SelectItem key={district} value={district}>
                       {district}
@@ -139,7 +139,7 @@ const AuditLog = () => {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   {uniqueDisasterTypes.map(type => (
                     <SelectItem key={type} value={type}>
                       {type}
