@@ -45,8 +45,17 @@ export interface RedTeamAnalysis {
   impactMessage: string;
 }
 
+export type UserRole = "admin" | "user";
+
+export interface AuthUser {
+  role: UserRole;
+  name: string;
+  phoneNumber?: string;
+}
+
 // State interface
 interface AppState {
+  user: AuthUser | null;
   selectedDistrict: string;
   disasterType: "flood" | "earthquake";
   riskScore: number;
@@ -60,6 +69,7 @@ interface AppState {
 
 // Action types
 type AppAction =
+  | { type: "SET_USER"; payload: AuthUser | null }
   | { type: "SET_SELECTED_DISTRICT"; payload: string }
   | { type: "SET_DISASTER_TYPE"; payload: "flood" | "earthquake" }
   | { type: "SET_RISK_SCORE"; payload: number }
@@ -72,6 +82,7 @@ type AppAction =
 
 // Initial state
 const initialState: AppState = {
+  user: null,
   selectedDistrict: "",
   disasterType: "flood",
   riskScore: 0,
@@ -86,6 +97,8 @@ const initialState: AppState = {
 // Reducer
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
+    case "SET_USER":
+      return { ...state, user: action.payload };
     case "SET_SELECTED_DISTRICT":
       return { ...state, selectedDistrict: action.payload };
     case "SET_DISASTER_TYPE":
@@ -138,6 +151,7 @@ export const useAppStore = () => {
 
   return {
     // State
+    user: state.user,
     selectedDistrict: state.selectedDistrict,
     disasterType: state.disasterType,
     riskScore: state.riskScore,
@@ -149,6 +163,7 @@ export const useAppStore = () => {
     redTeamAnalysis: state.redTeamAnalysis,
 
     // Actions
+    setUser: (user: AuthUser | null) => dispatch({ type: "SET_USER", payload: user }),
     setSelectedDistrict: (district: string) => dispatch({ type: "SET_SELECTED_DISTRICT", payload: district }),
     setDisasterType: (type: "flood" | "earthquake") => dispatch({ type: "SET_DISASTER_TYPE", payload: type }),
     setRiskScore: (score: number) => dispatch({ type: "SET_RISK_SCORE", payload: score }),

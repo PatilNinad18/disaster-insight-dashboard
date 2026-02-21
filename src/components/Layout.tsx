@@ -1,26 +1,38 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
   Shield, 
+  Bell, 
   FileText, 
   MapPin, 
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { useState } from "react";
+import { useAppStore } from "@/store/appStore";
+import { Badge } from "@/components/ui/badge";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Red Team", href: "/red-team", icon: Shield },
+  { name: "Alerts", href: "/alerts", icon: Bell },
   { name: "Audit Log", href: "/audit-log", icon: FileText },
   { name: "Zone Analysis", href: "/zone-analysis", icon: MapPin },
 ];
 
 const Layout = () => {
+  const navigate = useNavigate();
+  const { user, setUser } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+
+  const handleLogout = () => {
+    setUser(null);
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -106,7 +118,18 @@ const Layout = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-500">
+              {user && (
+                <>
+                  <Badge variant={user.role === "admin" ? "default" : "secondary"} className="font-normal">
+                    {user.name} ({user.role})
+                  </Badge>
+                  <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-600">
+                    <LogOut className="h-4 w-4 mr-1" />
+                    Log out
+                  </Button>
+                </>
+              )}
+              <div className="text-sm text-gray-500 hidden sm:inline">
                 Government Disaster Response System
               </div>
             </div>

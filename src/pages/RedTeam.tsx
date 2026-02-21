@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle, AlertCircle, Shield } from "lucide-react";
+import { AlertTriangle, CheckCircle, AlertCircle, Shield, Bell } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { evaluateRedTeam } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
 
 const RedTeam = () => {
+  const navigate = useNavigate();
   const { 
+    user,
     selectedDistrict, 
     disasterType, 
     riskScore, 
@@ -19,6 +22,7 @@ const RedTeam = () => {
   } = useAppStore();
 
   const [userDecision, setUserDecision] = useState<"Evacuate" | "Monitor" | "Ignore">("Monitor");
+  const showAiWarningCta = redTeamAnalysis && (redTeamAnalysis.conflictLevel === "High" || redTeamAnalysis.aiRecommendation === "Evacuate");
 
   const handleEvaluate = async () => {
     if (!selectedDistrict) {
@@ -172,6 +176,19 @@ const RedTeam = () => {
                     {redTeamAnalysis.conflictLevel === "Low" && " Your decision aligns well with the AI assessment."}
                   </p>
                 </div>
+
+                {showAiWarningCta && user?.role === "admin" && (
+                  <div className="p-4 rounded-lg border-2 border-orange-200 bg-orange-50">
+                    <p className="text-sm font-medium text-orange-900 mb-2">AI Red Team recommends immediate action</p>
+                    <Button
+                      onClick={() => navigate("/alerts")}
+                      className="w-full bg-orange-600 hover:bg-orange-700"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      Send AI warning via SMS
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">

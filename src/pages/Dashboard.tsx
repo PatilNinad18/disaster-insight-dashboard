@@ -135,8 +135,25 @@ const Dashboard = () => {
     return Math.min(100, Math.round(savedPerResource / 100));
   };
 
+  const getRecommendedAction = () => {
+    if (!selectedDistrict) return { text: "Select a district and run simulation", variant: "secondary" as const };
+    if (riskScore >= 70) return { text: "EVACUATE high-risk zones — send alert immediately", variant: "destructive" as const };
+    if (riskScore >= 40) return { text: "MONITOR — Prepare resources and consider targeted alerts", variant: "default" as const };
+    return { text: "No immediate action — continue monitoring", variant: "secondary" as const };
+  };
+
+  const recommendedAction = getRecommendedAction();
+
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Recommended action — one-line decision for officials */}
+      <div className="rounded-lg border-2 border-orange-200 bg-orange-50 px-4 py-3 flex items-center gap-3">
+        <span className="text-sm font-medium text-orange-900 shrink-0">Recommended action:</span>
+        <Badge variant={recommendedAction.variant} className="text-sm font-normal">
+          {recommendedAction.text}
+        </Badge>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

@@ -75,6 +75,163 @@ export interface ZoneAnalysisRequest {
   disasterType: "flood" | "earthquake";
 }
 
+// Alert / Warning SMS
+export interface SendAlertRequest {
+  phoneNumber: string;
+  message: string;
+  source?: "manual" | "red_team";
+}
+
+export interface AlertRecord {
+  id: string;
+  phoneNumber: string;
+  message: string;
+  source: "manual" | "red_team" | "broadcast";
+  timestamp: string;
+  status: "sent" | "failed";
+  broadcast?: boolean;
+}
+
+export interface Subscriber {
+  id: string;
+  name: string;
+  phoneNumber: string;
+}
+
+export interface BroadcastRecord {
+  id: string;
+  message: string;
+  timestamp: string;
+  recipientCount: number;
+}
+
+// Mock auth (hackathon — replace with real auth)
+const AUTH_STORAGE_KEY = "sentinelx_users";
+
+type StoredUser = { username: string; password: string; role: "admin" | "user"; name: string; phoneNumber?: string };
+const INITIAL_USERS: StoredUser[] = [
+  { username: "admin", password: "admin", role: "admin", name: "Admin" },
+  { username: "user", password: "user", role: "user", name: "Citizen", phoneNumber: "+91 9876500001" },
+];
+
+function loadUsers(): StoredUser[] {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw) as StoredUser[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  return [...INITIAL_USERS];
+}
+
+function saveUsers(list: StoredUser[]) {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+}
+
+let users: StoredUser[] = loadUsers();
+if (users.length === 0) {
+  users = [...INITIAL_USERS];
+  saveUsers(users);
+}
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "").slice(-10);
+}
+
+function findUser(identifier: string, password: string): StoredUser | undefined {
+  const id = identifier.trim();
+  const normalized = id.replace(/\D/g, "").length >= 10 ? normalizePhone(id) : null;
+  return users.find(
+    (x) =>
+      x.password === password &&
+      (x.username.toLowerCase() === id.toLowerCase() || (normalized && x.phoneNumber && normalizePhone(x.phoneNumber) === normalized))
+  );
+}
+
+export async function login(
+  usernameOrPhone: string,
+  password: string
+): Promise<{ role: "admin" | "user"; name: string; phoneNumber?: string } | null> {
+  await delay(300);
+  const u = findUser(usernameOrPhone.trim(), password.trim());
+  return u ? { role: u.role, name: u.name, phoneNumber: u.phoneNumber } : null;
+}
+
+export async function register(
+  name: string,
+  username: string,
+  password: string,
+  role: "admin" | "user" = "user",
+  phoneNumber?: string
+): Promise<{ ok: boolean; error?: string }> {
+  await delay(300);
+  const trimmed = username.trim().toLowerCase();
+  if (!trimmed || !password.trim() || !name.trim()) {
+    return { ok: false, error: "Name, username and password are required" };
+  }
+  if (users.some((x) => x.username.toLowerCase() === trimmed)) {
+    return { ok: false, error: "Username already taken" };
+  }
+  const phone = phoneNumber?.trim();
+  if (phone && users.some((x) => x.phoneNumber && normalizePhone(x.phoneNumber) === normalizePhone(phone))) {
+    return { ok: false, error: "Phone number already registered" };
+  }
+  if (password.length < 4) {
+    return { ok: false, error: "Password must be at least 4 characters" };
+  }
+  users.push({ username: trimmed, password: password.trim(), role, name: name.trim(), phoneNumber: phone || undefined });
+  saveUsers(users);
+  return { ok: true };
+}
+
+// Mock list of users who receive broadcast SMS
+const MOCK_SUBSCRIBERS: Subscriber[] = [
+  { id: "s1", name: "Village Head - Pune", phoneNumber: "+91 9876500001" },
+  { id: "s2", name: "Health Officer - Mumbai", phoneNumber: "+91 9876500002" },
+  { id: "s3", name: "NGO Coordinator", phoneNumber: "+91 9876500003" },
+  { id: "s4", name: "District Officer", phoneNumber: "+91 9876500004" },
+  { id: "s5", name: "Citizen Group Rep", phoneNumber: "+91 9876500005" },
+];
+
+let broadcastHistory: BroadcastRecord[] = [];
+
+export async function getSubscribers(): Promise<Subscriber[]> {
+  await delay(200);
+  return [...MOCK_SUBSCRIBERS];
+}
+
+export async function sendAlertToAll(message: string, source: "manual" | "red_team" = "manual"): Promise<{ sent: number }> {
+  await delay(600);
+  const id = `broadcast-${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  for (const sub of MOCK_SUBSCRIBERS) {
+    const record: AlertRecord = {
+      id: `${id}-${sub.id}`,
+      phoneNumber: sub.phoneNumber,
+      message,
+      source: "broadcast",
+      timestamp,
+      status: "sent",
+      broadcast: true,
+    };
+    alertHistory = [record, ...alertHistory].slice(0, 100);
+  }
+  broadcastHistory = [{ id, message, timestamp, recipientCount: MOCK_SUBSCRIBERS.length }, ...broadcastHistory].slice(0, 30);
+  return { sent: MOCK_SUBSCRIBERS.length };
+}
+
+export async function getBroadcastHistory(): Promise<BroadcastRecord[]> {
+  await delay(200);
+  return [...broadcastHistory];
+}
+
 const DISTRICTS: Record<string, DistrictData> = {
   pune: { name: "Pune", lat: 18.5204, lng: 73.8567, population: 9429408 },
   mumbai: { name: "Mumbai", lat: 19.076, lng: 72.8777, population: 20411274 },
@@ -257,6 +414,39 @@ export async function analyzeZones(req: ZoneAnalysisRequest): Promise<ZoneData[]
       coordinates: [[0, 0], [1, 0], [1, 1], [0, 1]]
     }
   ];
+}
+
+// In-memory alert history for hackathon demo (replace with API later)
+let alertHistory: AlertRecord[] = [];
+
+// POST /api/alerts/send — send warning SMS (mock)
+export async function sendAlert(req: SendAlertRequest): Promise<{ success: boolean; id: string }> {
+  await delay(400);
+  const id = `alert-${Date.now()}`;
+  const record: AlertRecord = {
+    id,
+    phoneNumber: req.phoneNumber,
+    message: req.message,
+    source: req.source ?? "manual",
+    timestamp: new Date().toISOString(),
+    status: "sent",
+  };
+  alertHistory = [record, ...alertHistory].slice(0, 50);
+  return { success: true, id };
+}
+
+// GET /api/alerts — list recent alerts
+export async function getAlertHistory(): Promise<AlertRecord[]> {
+  await delay(200);
+  return [...alertHistory];
+}
+
+// GET /api/alerts/for-phone — alerts sent to a specific number (for logged-in user)
+export async function getAlertsSentToPhone(phone: string): Promise<AlertRecord[]> {
+  await delay(200);
+  const normalized = phone.replace(/\D/g, "").slice(-10);
+  if (!normalized) return [];
+  return alertHistory.filter((a) => a.phoneNumber.replace(/\D/g, "").slice(-10) === normalized);
 }
 
 function delay(ms: number) {
