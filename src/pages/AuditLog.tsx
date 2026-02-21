@@ -122,7 +122,7 @@ const AuditLog = () => {
                   <SelectValue placeholder="All districts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All districts</SelectItem>
+                  <SelectItem value=" all ">All districts</SelectItem>
                   {uniqueDistricts.map(district => (
                     <SelectItem key={district} value={district}>
                       {district}
