@@ -1,5 +1,6 @@
-// Mock API service — mirrors FastAPI backend spec
-// Swap these with real fetch() calls when connecting to Python backend
+// Real API service - connects to FastAPI backend
+// Base URL for backend API
+const API_BASE_URL = 'http://localhost:8000/api';
 
 export interface DistrictData {
   name: string;
@@ -7,6 +8,12 @@ export interface DistrictData {
   lng: number;
   population: number;
 }
+
+// Get list of available cities from backend
+export const DISTRICT_LIST = [
+  'Delhi', 'Mumbai', 'Kolkata', 'Bengaluru', 'Chennai',
+  'Hyderabad', 'Ahmedabad', 'Pune', 'Jaipur', 'Guwahati'
+];
 
 export interface SimulationRequest {
   district: string;
@@ -30,6 +37,17 @@ export interface SimulationResult {
   fatalities: number;
   economic_loss: number;
   time_series: TimeSeriesPoint[];
+  // New ML prediction fields
+  predicted_deaths?: number;
+  predicted_economic_loss?: number;
+  real_population?: number;
+  location?: {
+    lat: number;
+    lng: number;
+  };
+  // Red team stress test results
+  stress_test_deaths?: number;
+  stress_test_loss?: number;
 }
 
 export interface RedTeamRequest {
@@ -75,59 +93,30 @@ export interface ZoneAnalysisRequest {
   disasterType: "flood" | "earthquake";
 }
 
-const DISTRICTS: Record<string, DistrictData> = {
-  pune: { name: "Pune", lat: 18.5204, lng: 73.8567, population: 9429408 },
-  mumbai: { name: "Mumbai", lat: 19.076, lng: 72.8777, population: 20411274 },
-  chennai: { name: "Chennai", lat: 13.0827, lng: 80.2707, population: 10971108 },
-  kolkata: { name: "Kolkata", lat: 22.5726, lng: 88.3639, population: 14850066 },
-  delhi: { name: "Delhi", lat: 28.7041, lng: 77.1025, population: 19814000 },
-  bengaluru: { name: "Bengaluru", lat: 12.9716, lng: 77.5946, population: 12764935 },
-  hyderabad: { name: "Hyderabad", lat: 17.385, lng: 78.4867, population: 10534418 },
-  ahmedabad: { name: "Ahmedabad", lat: 23.0225, lng: 72.5714, population: 8059441 },
-  jaipur: { name: "Jaipur", lat: 26.9124, lng: 75.7873, population: 6626178 },
-  guwahati: { name: "Guwahati", lat: 26.1445, lng: 91.7362, population: 1116267 },
-};
-
-export const DISTRICT_LIST = Object.values(DISTRICTS).map((d) => d.name);
-
 // GET /api/load-district/:name
 export async function loadDistrict(name: string): Promise<DistrictData> {
-  await delay(300); // simulate network
-  const key = name.toLowerCase();
-  const district = DISTRICTS[key];
-  if (!district) throw new Error(`District "${name}" not found`);
-  return { ...district };
+  const response = await fetch(`${API_BASE_URL}/load-district/${name}`);
+  if (!response.ok) {
+    throw new Error(`Failed to load district: ${response.statusText}`);
+  }
+  return await response.json();
 }
 
 // POST /api/simulate
 export async function simulate(req: SimulationRequest): Promise<SimulationResult> {
-  await delay(800); // simulate processing
-  const district = DISTRICTS[req.district.toLowerCase()];
-  const pop = district?.population ?? 5000000;
-
-  const severity =
-    req.disaster_type === "flood"
-      ? (req.rainfall ?? 150) / 300
-      : ((req.magnitude ?? 5) - 3) / 6;
-
-  const resourceFactor =
-    1 - Math.min(0.5, (req.rescue_teams + req.medical_units) / 200);
-  const affected = Math.round(pop * severity * 0.05);
-  const fatalities = Math.round(affected * 0.03 * resourceFactor);
-  const economic_loss = Math.round(affected * 5000 * severity);
-
-  const hours = [0, 2, 4, 6];
-  const time_series: TimeSeriesPoint[] = hours.map((hour) => {
-    const growth = 1 + hour * 0.4 * severity;
-    const delayPenalty = hour <= req.delay_hours ? 1.2 : 1;
-    return {
-      hour,
-      no_resources: Math.round(affected * 0.3 * growth * delayPenalty),
-      with_resources: Math.round(affected * 0.2 * growth * resourceFactor),
-    };
+  const response = await fetch(`${API_BASE_URL}/simulate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(req),
   });
-
-  return { affected_population: affected, fatalities, economic_loss, time_series };
+  
+  if (!response.ok) {
+    throw new Error(`Simulation failed: ${response.statusText}`);
+  }
+  
+  return await response.json();
 }
 
 // POST /api/red-team/evaluate
@@ -201,62 +190,19 @@ export async function getAuditLogs(filters?: {
 
 // POST /api/zone-analysis
 export async function analyzeZones(req: ZoneAnalysisRequest): Promise<ZoneData[]> {
-  await delay(400);
+  const response = await fetch(`${API_BASE_URL}/zone-analysis`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(req),
+  });
   
-  // Mock zone data for Pune
-  if (req.district.toLowerCase() === "pune") {
-    return [
-      {
-        id: "zone1",
-        name: "Central Pune",
-        riskScore: 85,
-        population: 2500000,
-        priority: 1,
-        recommendedRescueTeams: 15,
-        coordinates: [[18.5204, 73.8567], [18.5304, 73.8667], [18.5104, 73.8467]]
-      },
-      {
-        id: "zone2", 
-        name: "Kothrud",
-        riskScore: 72,
-        population: 1800000,
-        priority: 2,
-        recommendedRescueTeams: 12,
-        coordinates: [[18.5066, 73.8057], [18.5166, 73.8157], [18.4966, 73.7957]]
-      },
-      {
-        id: "zone3",
-        name: "Hinjewadi",
-        riskScore: 68,
-        population: 1200000,
-        priority: 3,
-        recommendedRescueTeams: 8,
-        coordinates: [[18.5982, 73.7362], [18.6082, 73.7462], [18.5882, 73.7262]]
-      },
-      {
-        id: "zone4",
-        name: "Baner",
-        riskScore: 45,
-        population: 900000,
-        priority: 4,
-        recommendedRescueTeams: 6,
-        coordinates: [[18.5635, 73.7773], [18.5735, 73.7873], [18.5535, 73.7673]]
-      }
-    ];
+  if (!response.ok) {
+    throw new Error(`Zone analysis failed: ${response.statusText}`);
   }
   
-  // Default zones for other districts
-  return [
-    {
-      id: "zone1",
-      name: "Urban Center",
-      riskScore: 75,
-      population: 2000000,
-      priority: 1,
-      recommendedRescueTeams: 10,
-      coordinates: [[0, 0], [1, 0], [1, 1], [0, 1]]
-    }
-  ];
+  return await response.json();
 }
 
 function delay(ms: number) {

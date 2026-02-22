@@ -1,6 +1,6 @@
 import { SimulationResult } from "@/services/api";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Users, Skull, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Skull, DollarSign, TrendingUp, Brain, Target, AlertTriangle } from "lucide-react";
 
 interface ResultsPanelProps {
   result: SimulationResult | null;
@@ -68,6 +68,14 @@ const ResultsPanel = ({ result }: ResultsPanelProps) => {
           label="Affected Population"
           value={formatNumber(result.affected_population)}
         />
+        {result.real_population !== undefined && (
+          <StatCard
+            icon={Users}
+            label="Total City Population"
+            value={formatNumber(result.real_population)}
+            variant="default"
+          />
+        )}
         <StatCard
           icon={Skull}
           label="Fatalities"
@@ -80,6 +88,40 @@ const ResultsPanel = ({ result }: ResultsPanelProps) => {
           value={formatCurrency(result.economic_loss)}
           variant="accent"
         />
+        {/* AI Prediction Cards */}
+        {result.predicted_deaths !== undefined && (
+          <StatCard
+            icon={Brain}
+            label="AI Predicted Deaths"
+            value={formatNumber(result.predicted_deaths)}
+            variant="default"
+          />
+        )}
+        {result.predicted_economic_loss !== undefined && (
+          <StatCard
+            icon={Target}
+            label="AI Predicted Economic Loss"
+            value={formatCurrency(result.predicted_economic_loss)}
+            variant="default"
+          />
+        )}
+        {/* Red Team Stress Test Cards */}
+        {result.stress_test_deaths !== undefined && (
+          <StatCard
+            icon={AlertTriangle}
+            label="Stress Test Deaths"
+            value={formatNumber(result.stress_test_deaths)}
+            variant="destructive"
+          />
+        )}
+        {result.stress_test_loss !== undefined && (
+          <StatCard
+            icon={AlertTriangle}
+            label="Stress Test Loss"
+            value={formatCurrency(result.stress_test_loss)}
+            variant="destructive"
+          />
+        )}
       </div>
 
       {/* Chart */}

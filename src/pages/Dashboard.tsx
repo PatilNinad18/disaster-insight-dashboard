@@ -8,7 +8,7 @@ import ControlPanel  from "@/components/ControlPanel";
 import ResultsPanel  from "@/components/ResultsPanel";
 import { loadDistrict, simulate, SimulationResult } from "@/services/api";
 import { useAppStore } from "@/store/appStore";
-import { Shield, Radio, TrendingUp, Users, AlertTriangle, Activity, ChevronDown, ChevronUp } from "lucide-react";
+import { Shield, Radio, TrendingUp, Users, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [medicalUnits, setMedicalUnits] = useState(5);
   const [reliefCapacity, setReliefCapacity] = useState(500);
   const [delayHours, setDelayHours] = useState(0);
+  const [currentCityData, setCurrentCityData] = useState<{population: number} | null>(null);
   const [riskOverlay, setRiskOverlay] = useState<{
     lat: number;
     lng: number;
@@ -73,6 +74,7 @@ const Dashboard = () => {
       const data = await loadDistrict(name);
       setMapCenter([data.lat, data.lng]);
       setMapZoom(10);
+      setCurrentCityData({population: data.population});
       setRiskOverlay(null);
       setLastSimulationResult(null);
     } catch {
@@ -96,12 +98,18 @@ const Dashboard = () => {
       });
       setLastSimulationResult(res);
 
+      // Update map center with backend location data
+      if (res.location) {
+        setMapCenter([res.location.lat, res.location.lng]);
+        setMapZoom(10);
+      }
+
       // Show risk overlay
       const intensity =
         disasterType === "flood" ? rainfall / 300 : (magnitude - 3) / 6;
       setRiskOverlay({
-        lat: mapCenter[0],
-        lng: mapCenter[1],
+        lat: res.location?.lat || mapCenter[0],
+        lng: res.location?.lng || mapCenter[1],
         type: disasterType,
         intensity,
       });
@@ -136,12 +144,45 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="bg-background rounded-lg border border-border p-4 shadow-sm m-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">SentinelX Dashboard</h1>
+            <p className="text-muted-foreground">Disaster Intelligence Platform</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant="outline" className="px-3 py-1">
+              {selectedDistrict || "No City Selected"}
+            </Badge>
+            <Badge variant={disasterType === "flood" ? "default" : "secondary"} className="px-3 py-1">
+              {disasterType === "flood" ? "🌊 Flood" : "🫠 Earthquake"}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mx-4">
+        <Card className="bg-background border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Risk Score</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">City Population</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {currentCityData ? currentCityData.population.toLocaleString() : "Select City"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total population
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-background border-border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-foreground">Total Risk Score</CardTitle>
             <AlertTriangle className={`h-4 w-4 ${getRiskColor(riskScore)}`} />
           </CardHeader>
           <CardContent>
@@ -154,9 +195,9 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estimated Fatalities</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Estimated Fatalities</CardTitle>
             <Users className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
@@ -169,25 +210,9 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Economic Loss</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {isLoading ? <Skeleton className="h-8 w-24" /> : 
-                lastSimulationResult ? `₹${(lastSimulationResult.economic_loss / 1000000).toFixed(1)}M` : "₹0M"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Projected economic impact
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resource Efficiency</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Resource Efficiency</CardTitle>
             <Activity className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -202,65 +227,64 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className={`flex-1 grid gap-6 mx-4 mb-4 ${controlsCollapsed ? 'grid-cols-12' : 'grid-cols-12'}`}>
         {/* Control Panel */}
-        <div className="lg:col-span-3">
-          <Collapsible open={!controlsCollapsed} onOpenChange={setControlsCollapsed}>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                Control Panel
-                {controlsCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Simulation Controls</CardTitle>
-                  <CardDescription>
-                    Configure disaster parameters and resources
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ControlPanel
-                    district={selectedDistrict}
-                    onDistrictChange={handleDistrictChange}
-                    disasterType={disasterType}
-                    onDisasterTypeChange={setDisasterType}
-                    rainfall={rainfall}
-                    onRainfallChange={setRainfall}
-                    magnitude={magnitude}
-                    onMagnitudeChange={setMagnitude}
-                    rescueTeams={rescueTeams}
-                    onRescueTeamsChange={setRescueTeams}
-                    medicalUnits={medicalUnits}
-                    onMedicalUnitsChange={setMedicalUnits}
-                    reliefCapacity={reliefCapacity}
-                    onReliefCapacityChange={setReliefCapacity}
-                    delayHours={delayHours}
-                    onDelayHoursChange={setDelayHours}
-                    onSimulate={handleSimulate}
-                    isLoading={isLoading}
-                  />
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
+        <div 
+          className={`${controlsCollapsed ? 'lg:col-span-1' : 'lg:col-span-3'} transition-all duration-300 cursor-pointer`}
+          onClick={() => setControlsCollapsed(!controlsCollapsed)}
+        >
+          {!controlsCollapsed ? (
+            <Card className="h-full bg-background border-border">
+              <CardHeader>
+                <CardTitle className="text-lg text-foreground">Simulation Controls</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Configure disaster parameters and resources
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="overflow-y-auto h-[calc(100%-80px)]" onClick={(e) => e.stopPropagation()}>
+                <ControlPanel
+                  district={selectedDistrict}
+                  onDistrictChange={handleDistrictChange}
+                  disasterType={disasterType}
+                  onDisasterTypeChange={setDisasterType}
+                  rainfall={rainfall}
+                  onRainfallChange={setRainfall}
+                  magnitude={magnitude}
+                  onMagnitudeChange={setMagnitude}
+                  rescueTeams={rescueTeams}
+                  onRescueTeamsChange={setRescueTeams}
+                  medicalUnits={medicalUnits}
+                  onMedicalUnitsChange={setMedicalUnits}
+                  reliefCapacity={reliefCapacity}
+                  onReliefCapacityChange={setReliefCapacity}
+                  delayHours={delayHours}
+                  onDelayHoursChange={setDelayHours}
+                  onSimulate={handleSimulate}
+                  isLoading={isLoading}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="h-full flex items-center justify-center bg-background border border-border rounded-lg">
+              <ChevronRight className="h-6 w-6 text-muted-foreground" />
+            </div>
+          )}
         </div>
 
         {/* Map */}
-        <div className="lg:col-span-6">
-          <Card>
+        <div className={`${controlsCollapsed ? 'lg:col-span-7' : 'lg:col-span-6'} transition-all duration-300`}>
+          <Card className="h-full bg-background border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <Shield className="h-5 w-5" />
                 Disaster Map - {selectedDistrict || "Select a district"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground">
                 Real-time disaster visualization and risk assessment
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-96 rounded-lg overflow-hidden border">
+            <CardContent className="h-[calc(100%-80px)] p-0">
+              <div className="h-full rounded-lg overflow-hidden border">
                 <MapView center={mapCenter} zoom={mapZoom} riskOverlay={riskOverlay} />
               </div>
             </CardContent>
@@ -268,15 +292,15 @@ const Dashboard = () => {
         </div>
 
         {/* Results Panel */}
-        <div className="lg:col-span-3">
-          <Card>
+        <div className={`${controlsCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'} transition-all duration-300`}>
+          <Card className="h-full bg-background border-border">
             <CardHeader>
-              <CardTitle>Simulation Results</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-foreground">Simulation Results</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Detailed analysis and projections
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-y-auto h-[calc(100%-80px)]">
               <ResultsPanel result={lastSimulationResult} />
             </CardContent>
           </Card>

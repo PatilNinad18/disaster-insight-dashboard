@@ -23,7 +23,7 @@ const Layout = () => {
   const location = useLocation();
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -34,13 +34,13 @@ const Layout = () => {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-background border-border shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-border">
           <div className="flex items-center gap-2">
-            <Shield className="h-8 w-8 text-orange-600" />
-            <span className="text-xl font-bold text-gray-900">SentinelX</span>
+            <Shield className="h-8 w-8 text-blue-600" />
+            <span className="text-xl font-bold text-foreground">SentinelX</span>
           </div>
           <Button
             variant="ghost"
@@ -63,8 +63,8 @@ const Layout = () => {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-orange-100 text-orange-700 border-r-2 border-orange-600"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      ? "bg-blue-100 text-blue-700 border-r-2 border-blue-600"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -76,8 +76,8 @@ const Layout = () => {
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
+          <div className="text-xs text-muted-foreground">
             <p>Disaster Intelligence Platform</p>
             <p className="mt-1">Version 2.0</p>
           </div>
@@ -87,7 +87,7 @@ const Layout = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         {/* Top header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-background border-border shadow-sm border-b">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
             <Button
               variant="ghost"
@@ -99,14 +99,14 @@ const Layout = () => {
             </Button>
 
             <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-orange-600" />
-              <h1 className="text-xl font-semibold text-gray-900">
+              <Shield className="h-6 w-6 text-blue-600" />
+              <h1 className="text-xl font-semibold text-foreground">
                 {navigation.find(item => item.href === location.pathname)?.name || "SentinelX"}
               </h1>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 Government Disaster Response System
               </div>
             </div>
