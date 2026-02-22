@@ -371,7 +371,7 @@ const RedTeam = () => {
               <div className="text-center py-12 text-muted-foreground">
                 <Brain className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg font-semibold mb-2">AI Advisor Ready</h3>
-                <p>Select a city, configure the scenario and click "Get AI Advisory" to receive ML-powered insights and recommendations</p>
+                <p>Select a city, configure scenario and click "Get AI Advisory" to receive ML-powered insights and recommendations</p>
               </div>
             )}
           </CardContent>

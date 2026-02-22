@@ -1,5 +1,18 @@
 # Welcome to your Lovable project
 
+## ⚠️ "Go Live" / MIME type error?
+
+If you see: **"Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of application/octet-stream"**:
+
+- **Do not** use the "Go Live" button or open `index.html` directly in the browser.
+- **Do this instead:** in a terminal, run:
+  ```sh
+  npm run dev
+  ```
+  Then open the URL Vite prints (e.g. **http://localhost:8080**) in your browser. That’s the only way to run this Vite project locally without the MIME error.
+
+---
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID

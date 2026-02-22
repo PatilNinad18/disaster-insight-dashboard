@@ -2,10 +2,11 @@ import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import  MapView  from "@/components/MapView";
-import ControlPanel  from "@/components/ControlPanel";
-import ResultsPanel  from "@/components/ResultsPanel";
+import MapView from "@/components/MapView";
+import ControlPanel from "@/components/ControlPanel";
+import ResultsPanel from "@/components/ResultsPanel";
 import { loadDistrict, simulate, SimulationResult } from "@/services/api";
 import { useAppStore } from "@/store/appStore";
 import { Shield, Radio, TrendingUp, Users, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
@@ -17,6 +18,7 @@ const INDIA_ZOOM = 5;
 
 const Dashboard = () => {
   const { toast } = useToast();
+
   const {
     selectedDistrict,
     disasterType,
@@ -30,17 +32,19 @@ const Dashboard = () => {
     setDisasterType
   } = useAppStore();
 
-  // Local state
   const [mapCenter, setMapCenter] = useState<[number, number]>(INDIA_CENTER);
   const [mapZoom, setMapZoom] = useState(INDIA_ZOOM);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
+
   const [rainfall, setRainfall] = useState(150);
   const [magnitude, setMagnitude] = useState(5.0);
   const [rescueTeams, setRescueTeams] = useState(10);
   const [medicalUnits, setMedicalUnits] = useState(5);
   const [reliefCapacity, setReliefCapacity] = useState(500);
   const [delayHours, setDelayHours] = useState(0);
-  const [currentCityData, setCurrentCityData] = useState<{population: number} | null>(null);
+
+  const [currentCityData, setCurrentCityData] = useState<{ population: number } | null>(null);
+
   const [riskOverlay, setRiskOverlay] = useState<{
     lat: number;
     lng: number;
@@ -48,7 +52,6 @@ const Dashboard = () => {
     intensity: number;
   } | null>(null);
 
-  // Calculate risk score based on current parameters
   useEffect(() => {
     if (!selectedDistrict) {
       setRiskScore(0);
@@ -56,25 +59,26 @@ const Dashboard = () => {
     }
 
     let score = 0;
+
     if (disasterType === "flood") {
       score = Math.min(100, (rainfall / 300) * 100);
     } else {
       score = Math.min(100, ((magnitude - 3) / 6) * 100);
     }
-    
-    // Adjust for delay
-    score = Math.min(100, score + (delayHours * 5));
-    
+
+    score = Math.min(100, score + delayHours * 5);
+
     setRiskScore(Math.round(score));
   }, [selectedDistrict, disasterType, rainfall, magnitude, delayHours, setRiskScore]);
 
   const handleDistrictChange = useCallback(async (name: string) => {
     setSelectedDistrict(name);
+
     try {
       const data = await loadDistrict(name);
       setMapCenter([data.lat, data.lng]);
       setMapZoom(10);
-      setCurrentCityData({population: data.population});
+      setCurrentCityData({ population: data.population });
       setRiskOverlay(null);
       setLastSimulationResult(null);
     } catch {
@@ -84,7 +88,9 @@ const Dashboard = () => {
 
   const handleSimulate = useCallback(async () => {
     if (!selectedDistrict) return;
+
     setIsLoading(true);
+
     try {
       const res = await simulate({
         district: selectedDistrict,
@@ -94,33 +100,50 @@ const Dashboard = () => {
         rescue_teams: rescueTeams,
         medical_units: medicalUnits,
         relief_camp_capacity: reliefCapacity,
-        delay_hours: delayHours,
+        delay_hours: delayHours
       });
+
       setLastSimulationResult(res);
 
-      // Update map center with backend location data
       if (res.location) {
         setMapCenter([res.location.lat, res.location.lng]);
         setMapZoom(10);
       }
 
-      // Show risk overlay
       const intensity =
         disasterType === "flood" ? rainfall / 300 : (magnitude - 3) / 6;
+
       setRiskOverlay({
         lat: res.location?.lat || mapCenter[0],
         lng: res.location?.lng || mapCenter[1],
         type: disasterType,
-        intensity,
+        intensity
       });
 
-      toast({ title: "Simulation Complete", description: `${selectedDistrict} — ${disasterType}` });
+      toast({
+        title: "Simulation Complete",
+        description: `${selectedDistrict} — ${disasterType}`
+      });
+
     } catch {
       toast({ title: "Error", description: "Simulation failed", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDistrict, disasterType, rainfall, magnitude, rescueTeams, medicalUnits, reliefCapacity, delayHours, mapCenter, toast, setIsLoading, setLastSimulationResult]);
+  }, [
+    selectedDistrict,
+    disasterType,
+    rainfall,
+    magnitude,
+    rescueTeams,
+    medicalUnits,
+    reliefCapacity,
+    delayHours,
+    mapCenter,
+    toast,
+    setIsLoading,
+    setLastSimulationResult
+  ]);
 
   const getRiskColor = (score: number) => {
     if (score >= 80) return "text-red-600";
@@ -129,7 +152,7 @@ const Dashboard = () => {
     return "text-green-600";
   };
 
-  const getRiskBadgeVariant = (score: number): "default" | "secondary" | "destructive" | "outline" => {
+  const getRiskBadgeVariant = (score: number) => {
     if (score >= 80) return "destructive";
     if (score >= 60) return "default";
     if (score >= 40) return "secondary";
@@ -138,18 +161,33 @@ const Dashboard = () => {
 
   const calculateResourceEfficiency = () => {
     if (!lastSimulationResult) return 0;
-    const totalResources = rescueTeams + medicalUnits + (reliefCapacity / 100);
+    const totalResources = rescueTeams + medicalUnits + reliefCapacity / 100;
     const savedPerResource = lastSimulationResult.affected_population / totalResources;
     return Math.min(100, Math.round(savedPerResource / 100));
   };
 
+  const getRecommendedAction = () => {
+    if (!selectedDistrict)
+      return { text: "Select a district and run simulation", variant: "secondary" as const };
+
+    if (riskScore >= 70)
+      return { text: "EVACUATE high-risk zones — send alert immediately", variant: "destructive" as const };
+
+    if (riskScore >= 40)
+      return { text: "MONITOR — Prepare resources and consider targeted alerts", variant: "default" as const };
+
+    return { text: "No immediate action — continue monitoring", variant: "secondary" as const };
+  };
+
+  const recommendedAction = getRecommendedAction();
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+
       {/* Header */}
       <div className="bg-background rounded-lg border border-border p-4 shadow-sm m-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">SentinelX Dashboard</h1>
             <p className="text-muted-foreground">Disaster Intelligence Platform</p>
           </div>
           <div className="flex items-center gap-4">
